@@ -1,0 +1,12 @@
+# Pinned exactly: SDK/client defaults (retries, timeouts, chunk parsing) can change measurements.
+# torch and vLLM are server-side, installed separately on the GPU box; meta.json records their versions.
+
+# Harness (client side)
+openai==3.19.2
+httpx2==2.13.1
+numpy==2.5.3
+
+# Mock server (local testing only)
+fastapi==0.141.1
+uvicorn==0.54.0
+pydantic==2.13.5
