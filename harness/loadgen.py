@@ -442,6 +442,11 @@ def parse_args():
         help="Model name the server was launched with"
     )
     parser.add_argument(
+        "--dtype",
+        default=None,
+        help="Model dtype the server was launched with (e.g. float16), recorded in meta.json"
+    )
+    parser.add_argument(
         "--concurrencies",
         nargs="+",
         type=int,
