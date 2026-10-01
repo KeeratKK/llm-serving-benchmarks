@@ -111,27 +111,29 @@ for that token (`analysis/stall_check.py`).
 **Setup:** WSL2 (kernel 6.18.40.1) on an Intel i7-1260P (16 logical CPUs),
 Python 3.12.3, aiohttp 3.14.3, numpy 2.5.3, mock on fastapi 0.141.1 /
 uvicorn 0.54.0 (`--log-level warning`). N=256, prompt 128, output 256,
-K=1280 in-window requests. **Single run:** this checks the harness and
-isn't a benchmark result.
+K=1280 in-window requests. Commit `7c77717`, run `results/20261001-003329`.
+**This checks the harness and isn't a benchmark result.** A second run on
+the same code agreed within the ranges shown in brackets.
 
-| N=256, 20 ms ITL | Expected | Measured |
+| N=256, 20 ms ITL | Expected | Measured [second run] |
 |---|---|---|
-| Throughput | ~46 req/s (N / E2E) | 45.8 req/s |
-| TTFT p50 / p99 | ~200 ms | 204 / 221 ms |
-| E2E p50 / p99 | ~5.6 s (5.65 s measured at N=1) | 5.60 / 5.65 s |
-| ITL p10 / p50 / p99 | the mock's own send gaps: 20.4 / 21.0 / 25.0 ms | 19.3 / 20.9 / 29.4 ms |
-| Client delay (arrival − send), p50 / p99 / max | small | 1.1 / 10.5 / 26.1 ms |
-| Longest gap with no tokens on any stream | — | 10 ms, the same on the mock's send side |
+| Throughput | ~46 req/s (N / E2E) | 45.9 [45.8] req/s |
+| TTFT p50 / p99 | ~200 ms | 204 / 215 [204 / 221] ms |
+| E2E p50 / p99 | ~5.6 s (5.65 s measured at N=1) | 5.57 / 5.62 [5.60 / 5.65] s |
+| ITL p10 / p50 / p99 | the mock's own send gaps: 20.4 / 20.9 / 24.5 ms | 19.2 / 20.9 / 28.4 [19.3 / 20.9 / 29.4] ms |
+| Client delay (arrival − send), p50 / p99 / max | small | 1.2 / 8.4 / 34.2 [1.1 / 10.5 / 26.1] ms |
+| Longest gap with no tokens on any stream | — | 10 ms, the same on the mock's send side (both runs) |
 
 That's 12,800 tokens/s through one client process. At that rate, the
-harness timestamps tokens about 1 ms late at the median and about 10 ms late
+harness timestamps tokens about 1 ms late at the median and 8–11 ms late
 at p99. That adds about 4 ms to ITL p99. At N=16 the median delay is
 1.2 ms, so load mostly affects the tail. This is the harness's measurement
 error, and the vLLM results should be read with it in mind.
 
 **What failed before this passed:**
 
-- **OpenAI SDK client** (same test, no profiler attached): 28 req/s,
+- **OpenAI SDK client** (same test, no profiler attached, run
+  `results/20260930-210638`): 28 req/s,
   E2E p50 9.1 s, ITL p50 0.1 ms / p99 1,161 ms. The client process sat
   at about 95% of a core. Chunks queued up in the socket and were read in
   bursts, so ITL showed stalls that weren't there. A py-spy profile put
@@ -162,7 +164,7 @@ TODO
   anything content-dependent.
 - Closed-loop load can't show unbounded queueing.
 - Client timestamp error, measured against the mock: about 1 ms at the
-  median and about 10 ms at p99, at 12,800 tokens/s. The vLLM points
+  median and 8–11 ms at p99, at 12,800 tokens/s. The vLLM points
   stream far fewer tokens per second, but ITL p99 differences of a few ms
   are within this error.
 - TODO

@@ -643,7 +643,7 @@ def get_git_info():
         ).stdout.strip()
 
         git_status = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--untracked-files=no"],
             cwd=cwd,
             capture_output=True,
             text=True,

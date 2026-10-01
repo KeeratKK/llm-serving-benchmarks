@@ -1,0 +1,7 @@
+{"event": "warmup_start", "timestamp": 13011.595678737}
+{"event": "warmup_finished", "timestamp": 13017.411126588}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "concurrency_level_start", "timestamp": 13017.413393207, "K": 1280, "M": 256, "deadline": 14217.413393207}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "nth_request_sent", "timestamp": 13025.065892275, "request_idx": 255}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "first_wave_finished", "timestamp": 13030.68561849}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "sending_stopped", "timestamp": 13064.12842318, "reason": "K"}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "drain_finished", "timestamp": 13069.690302589}
