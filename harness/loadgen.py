@@ -1,6 +1,6 @@
 import asyncio
+import aiohttp
 import argparse
-import httpx2
 import json
 import time
 import sys
@@ -13,8 +13,7 @@ import urllib.request
 from datetime import datetime
 from itertools import product
 from pathlib import Path
-from openai import AsyncOpenAI
-from typing import TextIO
+from typing import TextIO, Any
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 
@@ -40,7 +39,7 @@ class RunContext:
     events_file: TextIO
     warmup_file: TextIO
 
-    client: AsyncOpenAI
+    client: aiohttp.ClientSession
 
     model: str
     output_len: int
@@ -79,9 +78,11 @@ class RunState:
     sending_stopped: bool = False
     stopped_reason: str | None = None
 
-async def send_single_request(client: AsyncOpenAI, model: str, temperature: float, prompt_len: int, output_len: int, concurrency: int, repeat: int, request_idx: int):
+async def send_single_request(client: aiohttp.ClientSession, model: str, temperature: float, prompt_len: int, output_len: int, concurrency: int, repeat: int, request_idx: int):
 
     token_timestamps = []
+    # Only the mock sends t_sent (a diagnostic for client-side delay); stays empty against vLLM
+    sent_timestamps = []
     validation_errors = []
 
     finish_reason = None
@@ -100,40 +101,85 @@ async def send_single_request(client: AsyncOpenAI, model: str, temperature: floa
     wall_start = time.time()  # for lining rows up against the nvidia-smi log
     start = time.perf_counter()
 
-    try:
-        stream = await client.completions.create(
-            model=model,
-            prompt=prompt,
-            max_tokens=output_len,
-            temperature=temperature,
-            seed=BASE_SEED,
-            stream_options={"include_usage": True},
-            stream=True,
-            extra_body={
-                "min_tokens": output_len,
-                "ignore_eos": True
-            }
-        )
+    request_body: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "max_tokens": output_len,
+        "temperature": temperature,
+        "seed": BASE_SEED,
+        "stream_options": {"include_usage": True},
+        "stream": True,
+        "min_tokens": output_len,
+        "ignore_eos": True
+    }
 
-        # 'Async with' gives the connection back to the pool even if we fail mid-stream
-        async with stream:
-            async for chunk in stream:
+    try:
+
+        # No leading slash: aiohttp joins it onto the session's base_url (.../v1/), a leading slash would drop the /v1
+        async with client.post("completions", json=request_body) as response:
+
+            if not 200 <= response.status < 300:
+                body = await response.read()
+                error_msg = body.decode("utf-8", errors="replace")
+
+                response.raise_for_status()
+
+            # Split the byte stream into lines
+            async for line in response.content:        
+
+                line = line.decode("utf-8").strip()
+
+                # We only care about data: lines
+                if not line or line.startswith(":") or not line.startswith("data:"):
+                    continue
+
+                data = line[len("data:"):].strip()
+
+                # Only for OpenAI, not part of SSE. Keep reading to EOF instead of breaking:
+                # aiohttp closes a connection whose body wasn't fully read instead of pooling it,
+                # and the reconnect would land in the next request's TTFT
+                if data == "[DONE]":
+                    continue
 
                 now = time.perf_counter()
 
-                # Any chunk with choices is a token and the usage chunk has none
-                if chunk.choices:
+                # Loads it into a dictionary (which is cheap since we are no longer constructing a full python object)
+                chunk = json.loads(data)
+
+                if "error" in chunk:
+                    error = chunk["error"]
+
+                    if isinstance(error, dict):
+                        error_type = error.get("type", "StreamError")
+                        error_msg = error.get("message", str(error))
+                    else:
+                        error_type = "StreamError"
+                        error_msg = str(error)
+
+                    break
+
+                choices = chunk.get("choices", [])
+
+                # This is a token, meanwhile usage chunk has choices=[]
+                if choices:
                     token_timestamps.append(now)
-                    if chunk.choices[0].finish_reason:
-                        finish_reason = chunk.choices[0].finish_reason
 
-                if chunk.usage:
-                    prompt_tokens = chunk.usage.prompt_tokens
-                    completion_tokens = chunk.usage.completion_tokens
+                    if "t_sent" in chunk:
+                        sent_timestamps.append(chunk["t_sent"])
 
+                    if choices[0].get("finish_reason"):
+                        finish_reason = choices[0].get("finish_reason")
+
+                usage = chunk.get("usage")
+                if usage:
+                    prompt_tokens = usage.get("prompt_tokens")
+                    completion_tokens = usage.get("completion_tokens")
+
+                
     except Exception as e:
+        if error_msg is None:
+            error_msg = str(e)
         error_type = type(e).__name__
-        error_msg = str(e)
 
     end = time.perf_counter()
 
@@ -161,6 +207,7 @@ async def send_single_request(client: AsyncOpenAI, model: str, temperature: floa
         "start": start,
         "end": end,
         "token_timestamps": token_timestamps,
+        "sent_timestamps": sent_timestamps or None,
         "finish_reason": finish_reason,
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
@@ -689,8 +736,7 @@ async def write_metadata(ctx: RunContext, args):
         "client_environment": {
             "python_version": platform.python_version(),
             "packages": {
-                "openai": get_package_version("openai"),
-                "httpx2": get_package_version("httpx2"),
+                "aiohttp": get_package_version("aiohttp"),
                 "numpy": get_package_version("numpy")
             }
         },
@@ -763,20 +809,16 @@ async def main():
 
     # Sized from the largest N in this sweep, and reused across every level
     max_connections = max(args.concurrencies) + CONNECTION_MARGIN
-    http_client = httpx2.AsyncClient(
-        limits=httpx2.Limits(
-            max_connections=max_connections,
-            max_keepalive_connections=max_connections,
-            keepalive_expiry=60
-        )
-    )
 
-    client = AsyncOpenAI(
-        base_url=args.base_url,
-        api_key="dummy",
-        max_retries=0,
-        http_client=http_client,
-        timeout=args.client_timeout
+    # aiohttp's default connector caps at 100 connections, which would silently cap N
+    client = aiohttp.ClientSession(
+        base_url=args.base_url.rstrip("/") + "/",  # aiohttp requires the trailing slash when base_url has a path
+        connector=aiohttp.TCPConnector(
+            limit=max_connections,
+            keepalive_timeout=60
+        ),
+        # total covers the whole request including the stream, so this is a cap on E2E
+        timeout=aiohttp.ClientTimeout(total=args.client_timeout)
     )
 
     ctx = RunContext(
@@ -796,9 +838,9 @@ async def main():
         max_consecutive_errors=args.M
     )
 
-    await write_metadata(ctx, args)
-
     try:
+        await write_metadata(ctx, args)
+
         await warmup_server(ctx, args.num_requests, max(args.prompt_lens), 0, args.repeat)
 
         for repeat, prompt_len, concurrency in product(range(args.repeat), args.prompt_lens, args.concurrencies):

@@ -1,0 +1,12 @@
+{"event": "warmup_start", "timestamp": 332.238841024}
+{"event": "warmup_finished", "timestamp": 338.575875705}
+{"concurrency": 1, "prompt_len": 128, "repeat": 0, "event": "concurrency_level_start", "timestamp": 338.576569504, "K": 150, "M": 10, "deadline": 1538.576569504}
+{"concurrency": 1, "prompt_len": 128, "repeat": 0, "event": "nth_request_sent", "timestamp": 338.579025676, "request_idx": 0}
+{"concurrency": 1, "prompt_len": 128, "repeat": 0, "event": "first_wave_finished", "timestamp": 344.232841223}
+{"concurrency": 1, "prompt_len": 128, "repeat": 0, "event": "sending_stopped", "timestamp": 1191.162653696, "reason": "K"}
+{"concurrency": 1, "prompt_len": 128, "repeat": 0, "event": "drain_finished", "timestamp": 1191.162877468}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "concurrency_level_start", "timestamp": 1191.162995796, "K": 1280, "M": 256, "deadline": 2391.162995796}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "nth_request_sent", "timestamp": 1199.465838939, "request_idx": 255}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "first_wave_finished", "timestamp": 1208.169676574}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "sending_stopped", "timestamp": 1262.73544074, "reason": "K"}
+{"concurrency": 256, "prompt_len": 128, "repeat": 0, "event": "drain_finished", "timestamp": 1270.436838052}

@@ -3,3 +3,9 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 *.log
+
+profile.svg
+
+# Raw per-request data is too large for git; commit the .gz for runs the README cites
+results/*/requests.jsonl
+results/*/warmup.jsonl

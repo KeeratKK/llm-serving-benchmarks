@@ -50,6 +50,9 @@ async def stream_generator(request: CompletionRequest):
                     "finish_reason": None if idx != request.max_tokens - 1 else "length"
                 }
             ],
+            # Mock-only diagnostic, not part of vLLM's format. perf_counter is CLOCK_MONOTONIC on Linux,
+            # shared by every process on the machine, so the harness can compare it with its arrival times
+            "t_sent": time.perf_counter(),
         }
 
         yield f"data: {json.dumps(chunk)}\n\n"

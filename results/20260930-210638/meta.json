@@ -1,0 +1,70 @@
+{
+  "run": {
+    "run_id": "20260930-210638",
+    "start_time": "2026-09-30T21:06:38.905554-04:00",
+    "clock_reference": {
+      "wall_time": 1790816798.905549,
+      "perf_counter": 332.235865899
+    },
+    "git": {
+      "commit_hash": "05dbe70",
+      "uncommitted_changes": true
+    },
+    "argv": [
+      "harness/loadgen.py",
+      "--concurrencies",
+      "1",
+      "256",
+      "--prompt-lens",
+      "128"
+    ],
+    "args": {
+      "base_url": "http://127.0.0.1:8001/v1",
+      "model": "unsloth/Llama-3.2-1B-Instruct",
+      "concurrencies": [
+        1,
+        256
+      ],
+      "prompt_lens": [
+        128
+      ],
+      "output_len": 256,
+      "temperature": 0.0,
+      "client_timeout": 180,
+      "K": 150,
+      "T": 1200,
+      "repeat": 1,
+      "stagger_interval": 0.03,
+      "M": 10,
+      "num_requests": 100,
+      "results_dir": "results",
+      "server_cmd": null,
+      "server_log": null
+    }
+  },
+  "client_environment": {
+    "python_version": "3.12.3",
+    "packages": {
+      "openai": "3.19.2",
+      "httpx2": "2.13.1",
+      "numpy": "2.5.3"
+    }
+  },
+  "server_environment": {
+    "torch_version": null,
+    "vllm_version": null,
+    "gpu": null,
+    "gpu_count": null,
+    "cuda_version": null,
+    "driver_version": null,
+    "server_cmd": null,
+    "attention_backend": null,
+    "kv_cache_tokens": null,
+    "max_concurrency": null,
+    "max_model_len": null,
+    "served_models": null
+  },
+  "config": {
+    "effective_config": null
+  }
+}
