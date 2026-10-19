@@ -1,6 +1,6 @@
 # LLM Serving Performance Lab
 
-> **Status: v0.1 in progress.
+> **Status: v0.1 in progress.**
 
 ## The question
 
