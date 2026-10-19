@@ -1,7 +1,6 @@
 # LLM Serving Performance Lab
 
-> **Status: v0.1 in progress. Target ship date: Oct 5, 2026.** The harness
-> passes its validation against a mock server (below). No GPU results yet.
+> **Status: v0.1 in progress.
 
 ## The question
 
